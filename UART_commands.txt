@@ -1,0 +1,50 @@
+Charger UART commands
+
+AT[command][value]+CR - general command pattern
+The device answer with OK+CR to the setup commands
+
+Switch on/off commands
+ATON - switch on the battery charging
+ATOFF - switch off the charging
+
+Output current commands
+ATCURR - view output current
+ATCURR10 - set output charge current two digits 0-99 Amps
+
+Output voltage commands
+ATOUTCOFF180 - set output Cut Off voltage 3 digits 0-999 Volt
+ATOUTCOFF - view output cutoff voltage
+ATOUT - vew output voltage
+
+Input voltage commands
+ATINP - view input voltage
+
+Tune d-time periods
+ATDTR - view current DTR1, DTR2
+ATDTR100 - set DTR1, DTR2 to 100 clocks. For 50KHz (20us period) there are 4800 clocks
+
+Tune ADC trigger. The measurement point in respect of the PWM period for the output current/voltage
+ATTRG - view current TRG1 in percentage.
+ATTRG90 - set TRG1 to 90% of the current period
+
+Invoke new zero current offset measurement. It is the transducer reading when the output current is zero
+ATCALIB
+
+Output voltage calibration
+ATVO1CAL100 - 3 digits 1-999
+ATVO2CAL100
+
+Set PWM ratio manually, switching off the PID function
+ATPWM - view the current PWM PHASE2 value
+ATPWM1-9999 - set PHASE2 value manually
+
+Periodic log commands
+ATLOGON - log info switch on
+ATLOGOFF - log info switch off
+The log contains output current information + output voltage + temeparure info
+
+Temperature control commands
+ATTEMP1 - view main MOSFET heat sink temeparature
+ATTEMP2 - view transformer temperature
+ATTEMP3 - view output rectifier diodes heat sink temperature
+ATTEMPCOFF80 - set cutoff temperature to 80 deg celsium of whatever temp sensor two digits 0-99 deg
