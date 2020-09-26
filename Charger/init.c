@@ -1,44 +1,8 @@
-/**********************************************************************
-* © 2008 Microchip Technology Inc.
-*
-* SOFTWARE LICENSE AGREEMENT:
-* Microchip Technology Incorporated ("Microchip") retains all ownership and 
-* intellectual property rights in the code accompanying this message and in all 
-* derivatives hereto.  You may use this code, and any derivatives created by 
-* any person or entity by or on your behalf, exclusively with Microchip's
-* proprietary products.  Your acceptance and/or use of this code constitutes 
-* agreement to the terms and conditions of this notice.
-*
-* CODE ACCOMPANYING THIS MESSAGE IS SUPPLIED BY MICROCHIP "AS IS".  NO 
-* WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED 
-* TO, IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A 
-* PARTICULAR PURPOSE APPLY TO THIS CODE, ITS INTERACTION WITH MICROCHIP'S 
-* PRODUCTS, COMBINATION WITH ANY OTHER PRODUCTS, OR USE IN ANY APPLICATION. 
-*
-* YOU ACKNOWLEDGE AND AGREE THAT, IN NO EVENT, SHALL MICROCHIP BE LIABLE, WHETHER 
-* IN CONTRACT, WARRANTY, TORT (INCLUDING NEGLIGENCE OR BREACH OF STATUTORY DUTY), 
-* STRICT LIABILITY, INDEMNITY, CONTRIBUTION, OR OTHERWISE, FOR ANY INDIRECT, SPECIAL, 
-* PUNITIVE, EXEMPLARY, INCIDENTAL OR CONSEQUENTIAL LOSS, DAMAGE, FOR COST OR EXPENSE OF 
-* ANY KIND WHATSOEVER RELATED TO THE CODE, HOWSOEVER CAUSED, EVEN IF MICROCHIP HAS BEEN 
-* ADVISED OF THE POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT 
-* ALLOWABLE BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY RELATED TO 
-* THIS CODE, SHALL NOT EXCEED THE PRICE YOU PAID DIRECTLY TO MICROCHIP SPECIFICALLY TO 
-* HAVE THIS CODE DEVELOPED.
-*
-* You agree that you are solely responsible for testing the code and 
-* determining its suitability.  Microchip has no obligation to modify, test, 
-* certify, or support the code.
-*
-*******************************************************************************/
 
 #include "p33FJ16GS502.h"
-//#include <p33FJ12GP202.h>
 #include "Functions.h"
 #include "dsp.h"
 #include "CAN_transmit.h"
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-/* ~~~~~~~~~~~~~~~~~~~~~~  PID Variable Definitions  ~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Variable Declaration required for each PID controller in the application. */
 tPID Buck1VoltagePID; 
@@ -49,7 +13,6 @@ tPID Buck1VoltagePID;
 fractional Buck1VoltageABC[3] __attribute__ ((section (".xbss, bss, xmemory")));
 fractional Buck1VoltageHistory[3] __attribute__ ((section (".ybss, bss, ymemory")));
 
-/* Buck1 is the 5V output with Voltage Mode Control implemented */
 #define PID_BUCK1_KP 0.23
 #define PID_BUCK1_KI 0.0016
 #define PID_BUCK1_KD 0
@@ -59,23 +22,10 @@ fractional Buck1VoltageHistory[3] __attribute__ ((section (".ybss, bss, ymemory"
 #define PID_BUCK1_B Q15(-1 *(PID_BUCK1_KP + 2 * PID_BUCK1_KD))      //B = -0.23
 #define PID_BUCK1_C Q15(PID_BUCK1_KD)                               //C = 0
 
-// #define PID_BUCK1_VOLTAGE_REFERENCE 0x7460				/* Reference voltage is from resistor divider circuit R11 & R12
-//													    	Voltage FB1 = (5kOhm / (5kOhm + 3.3kOhm)) * 5V = 3V
-//														    Now calculate expected ADC value (3V * 1024)/3.3V = 931
-//															Then left shift by 5 for Q15 format (931 * 32) = 29792 = 0x7460 */
- 
-// #define PID_BUCK1_VOLTAGE_MIN 	  	  2304				 /* Minimum duty cycle is total dead time (72) left shifted by 5 bits*/
-
-// #define PID_CURRENT_REFERENCE  2800 //3840     //  120 is the refernece for the current of 1A; left shift by 5 steps 120*32 =3840
-//#define PID_CURRENT_REFERENCE  1920     //  804 is the refernece for the zero current (2.50V at the transducer);
-                                        // for 1.26A = 46 left shift by 5 steps 46*32 =1472
-                                        // for 0.72 = 32 32*32 =1024
 #define TRIG_OFFSET             140      // small offset for the ADC trigger
 
-/* This is increment rate to give us desired PID_BUCK1VOLTAGE_REFERENCE. The sofstart takes 50ms */
+/* This is increment rate to give us the sofstart */
  #define BUCK1_SOFTSTART_INCREMENT	 40
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int zero_transducer, average, vout_average;       //zero value; running average of the measured current
 extern unsigned int TimerInterruptCount;
@@ -130,11 +80,8 @@ void UART_setup(void) {
 
 void Buck1Drive(void)
 {
-    #define PERIOD 4800 // for 50KHz PWM period
+    #define PERIOD 4800 // for 100KHz PWM period
     PTCON2bits.PCLKDIV =1;                  //master PWM clock divider; changes the PWM freq. from 200kHz to 100kHz period
-//    PTPER = 2404;                         /* PTPER = ((1 / 400kHz) / 1.04ns) = 2404, where 400kHz
-//						 is the desired switching frequency and 1.04ns is PWM resolution. */
-//    PTPER = 9600;  //100kHz
     PTPER = PERIOD;
 
 //  PWM#1
@@ -152,12 +99,8 @@ void Buck1Drive(void)
 
     PWMCON1bits.DTC = 0;                  /* Positive Deadtime enabled */
     
-    //DTR1    = 0x18;                  	  // DTR = (25ns / 1.04ns), where desired dead time is 25ns.
-					//	     Mask upper two bits since DTR<13:0>
     DTR1    = 80;                        // DT is about 100ns
-    //ALTDTR1 = 0x30;               	//	   ALTDTR = (50ns / 1.04ns), where desired dead time is 50ns.
-					//					     Mask upper two bits since ALTDTR<13:0>
-    ALTDTR1 = 80;                       // alt DT is about 150ns
+    ALTDTR1 = 80;                        // alt DT is about 150ns
 
     PWMCON1bits.IUE = 0;                  /* Disable Immediate duty cycle updates */
     PWMCON1bits.ITB = 0;                  /* Select Primary Timebase mode */
@@ -267,16 +210,13 @@ void UpdateControlReference(unsigned int POT) {
 }
 
 void UpdateDTR(unsigned int POT) {
-    //DTR1    = 0x18;                  	  // DTR = (25ns / 1.04ns), where desired dead time is 25ns.
-					//	     Mask upper two bits since DTR<13:0>
     DTR1    = POT;
-    //ALTDTR1 = 0x30;               	//	   ALTDTR = (50ns / 1.04ns), where desired dead time is 50ns.
-					//					     Mask upper two bits since ALTDTR<13:0>
     ALTDTR1 = POT;
 
-    DTR2    = POT;					//					     Mask upper two bits since ALTDTR<13:0>
+    DTR2    = POT;
     ALTDTR2 = POT;
 }
+
 void Buck1SoftStartRoutine(unsigned int POT)
 {
   /* This routine increments the control reference until the reference reaches 

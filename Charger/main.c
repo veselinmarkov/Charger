@@ -1,39 +1,8 @@
-/**********************************************************************
-* © 2008 Microchip Technology Inc.
-*
-* SOFTWARE LICENSE AGREEMENT:
-* Microchip Technology Incorporated ("Microchip") retains all ownership and 
-* intellectual property rights in the code accompanying this message and in all 
-* derivatives hereto.  You may use this code, and any derivatives created by 
-* any person or entity by or on your behalf, exclusively with Microchip's
-* proprietary products.  Your acceptance and/or use of this code constitutes 
-* agreement to the terms and conditions of this notice.
-*
-* CODE ACCOMPANYING THIS MESSAGE IS SUPPLIED BY MICROCHIP "AS IS".  NO 
-* WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED 
-* TO, IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A 
-* PARTICULAR PURPOSE APPLY TO THIS CODE, ITS INTERACTION WITH MICROCHIP'S 
-* PRODUCTS, COMBINATION WITH ANY OTHER PRODUCTS, OR USE IN ANY APPLICATION. 
-*
-* YOU ACKNOWLEDGE AND AGREE THAT, IN NO EVENT, SHALL MICROCHIP BE LIABLE, WHETHER 
-* IN CONTRACT, WARRANTY, TORT (INCLUDING NEGLIGENCE OR BREACH OF STATUTORY DUTY), 
-* STRICT LIABILITY, INDEMNITY, CONTRIBUTION, OR OTHERWISE, FOR ANY INDIRECT, SPECIAL, 
-* PUNITIVE, EXEMPLARY, INCIDENTAL OR CONSEQUENTIAL LOSS, DAMAGE, FOR COST OR EXPENSE OF 
-* ANY KIND WHATSOEVER RELATED TO THE CODE, HOWSOEVER CAUSED, EVEN IF MICROCHIP HAS BEEN 
-* ADVISED OF THE POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT 
-* ALLOWABLE BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY RELATED TO 
-* THIS CODE, SHALL NOT EXCEED THE PRICE YOU PAID DIRECTLY TO MICROCHIP SPECIFICALLY TO 
-* HAVE THIS CODE DEVELOPED.
-*
-* You agree that you are solely responsible for testing the code and 
-* determining its suitability.  Microchip has no obligation to modify, test, 
-* certify, or support the code.
-*
-*******************************************************************************/
+//Microchip example PID function is used. See their License in "pid.s" source code. The PID structure is defined in dsp.h
+
 
 #include "p33FJ16GS502.h"
 #include "Functions.h"
-// #include "dsp.h"
 #include "CAN_transmit.h"
 #include "string.h"
 #include "stdio.h"
@@ -45,16 +14,10 @@ _FWDT(FWDTEN_OFF)
 _FPOR(FPWRT_PWR128)
 _FICD(ICS_PGD2 & JTAGEN_OFF)
 
-//#define INPUTUNDERVOLTAGE 391					/* Input voltage <7V --> 2.2k/(10k+2.2k)*7V = 1.2623V
-//												Now calculate the ADC expected value = 1.2623/3.3*1023 = 391 */
-//#define INPUTOVERVOLTAGE 839						/* Input voltage >15V --> 2.2k/ (10k+2.2k)*15 = 2.70492V
-//												Now calculate the ADC expected value  = 2.70492/3.3*1023 = 839 */
+#define OutputChargeFinish 784                                  // Not implemented: Defones voltage limit to switch off the charging
 
-#define OutputChargeFinish 784                                  /* Out >4.2V --> 5k/(5k +3.3k)*4.2 = 2.53V
-                                                                    ADC value = 2.53/3.3*1023 = 784*/
+#define OutputBatteryPresent 280                                // Not implemented: Minimal voltage to detect if the battery is conncted
 
-#define OutputBatteryPresent 280                                  /* Out >1.5 --> 0.9V
-                                                                    ADC value = 1.5/3.3*1023 = 280 */
 // extern tPID Buck1VoltagePID;
 extern int zero_transducer, average, vout_average;
 double AlphaOutVolt =0.0278, BetaOutVolt = 0.0;   //Alpha and Beta coefficients in the equation OutVolt =Alpha*steps +Beta for the out voltage
@@ -129,8 +92,6 @@ int main(void)
     TRISBbits.TRISB5 =1;                    //config RB5(RP5) as an input
     RPINR18bits.U1RXR = 6;			// Make Pin RP6 U1RX
     TRISBbits.TRISB6 =1;                    //config RB6(RP6) as an input
-//        RPINR18bits.U1RXR = 0;			// Make Pin RP0 U1RX
-//        TRISBbits.TRISB0 =1;                    //config RB0(RP0) as an input
     //RPINR20bits.SCK1R =12;
     //RPINR21bits.SS1R =11;
     
@@ -179,12 +140,7 @@ int main(void)
     IFS0bits.U1RXIF = 0;                                        // Clear UART RX interrupt
     ADCONbits.ADON = 1;						/* Enable the ADC */
     PTCONbits.PTEN = 1;						/* Enable the PWM */
-    //ADCPC1bits.SWTRG2 =1;                                               // new sample for pair 2; POT Voltage
-
-     /* Setup RB12 to enable Buck 1 Output load */
-//    TRISBbits.TRISB12 = 0;                  /* Set RB12 as digital output */
-//    LATBbits.LATB12 = 0;                    /* If set this turns ON output load connected to Buck1 */
-
+    
     //Stop the PWM
     IOCON1bits.OVRENH = 1;
     IOCON1bits.OVRENL = 1;
@@ -228,7 +184,7 @@ int main(void)
                                 UART_string_out("PID activated");
                             }
                         }
-                        else if (strncmp("ATOFF", UART_buff, 5) ==0) {                       //stop the charging                                                  // process UART commands
+                        else if (strncmp("ATOFF", UART_buff, 5) ==0) {              //stop the charging                                                  
                             UART_string_out("OK");
                             IEC6bits.ADCP0IE = 0;                                            /* Disable the ADC Pair 0 interrupt current measurement*/
                             IOCON1bits.OVRENH = 1;                                           //Stop the PWM
@@ -368,20 +324,8 @@ int main(void)
                     if (U1STAbits.OERR ==1) {
                         U1STAbits.OERR =0;
                     }
-/*
-                    if (ADSTATbits.P2RDY ==1)
-                    {
-                            PotVoltage = ADCBUF5;						// Read POT Voltage
-                            if (IOCON1bits.OVRENH ==0)                                          //if only the PWM is active
-                                UpdateDTR(PotVoltage);
-//                                UpdateControlReference(5*PotVoltage);
-                            ADSTATbits.P2RDY = 0;						// Clear the ADC pair ready bit
-                            ADCPC1bits.SWTRG2 =1;                                               // new sample for pair 2
 
-                    }
-*/
-                    if (!(PORTBbits.RB8) )  //&& (OutVoltage >= OutputBatteryPresent) && (OutVoltage <= OutputChargeFinish)) /* if input voltage is less than
-                                          //                                 ChargeFinish or greater than BatteryPresent then activate the PWM output */
+                    if (!(PORTBbits.RB8) )  //&& (OutVoltage >= OutputBatteryPresent) && (OutVoltage <= OutputChargeFinish)) /* if input voltage is less than  ChargeFinish or greater than BatteryPresent then activate the PWM output */
                     {
                             PID_enable =1; 
                             IOCON1bits.OVRENH = 0;			//Start the PWM
@@ -391,23 +335,22 @@ int main(void)
                             IEC6bits.ADCP0IE = 1;
                             average =0;
                             vout_average =0;
-//                            Buck1SoftStartRoutine(5*PotVoltage);    			/* Initiate Buck 1 soft start to 5V */
                             Buck1SoftStartRoutine(CurrentTarget *32);
                             CAN_result =CAN_read(CANCTRL);
                     }
                     
 
-                    //for the mcp2515 to transmit data must load al least TXBnDLC-data lenght code, TXB0SIDH-standard dientifier high, TXB0SIDL-SID low
+                    //for CAN mcp2515 to transmit data must load al least TXBnDLC-data lenght code, TXB0SIDH-standard dientifier high, TXB0SIDL-SID low
 
                     /*
                     if ((OutVoltage < OutputBatteryPresent) || (OutVoltage > OutputChargeFinish)) // if input voltage is less than
-                                                                           BatteryPresent or greater than ChargeFinish then deactivate the PWM output 
+                                                    BatteryPresent (no battery connected) or greater than ChargeFinish then deactivate the PWM output 
                     {
                             IOCON1bits.OVRENH = 1;			//Stop the PWM
                             IOCON1bits.OVRENL = 1;
                     }
                      */
-//        LATBbits.LATB12 =~PORTBbits.RB8;
+					//        LATBbits.LATB12 =~PORTBbits.RB8;    //Indicate PWM cycle start
                     Delay_ms(200);          //delay the main loop at 0.5 s. intervals
                     LATBbits.LATB10 = PORTBbits.RB0;    //indicate overcurrent/temperature fault LED
                     PID_enable = PORTBbits.RB0; //switch on/off PID when overcurrent/temperature fault
