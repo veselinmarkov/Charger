@@ -1,5 +1,7 @@
 # Charger
 High power electric car charger
+![Prototype board](Charger.jpg?raw=true "Prototype Board")
+
 
 The AC-DC charger was designed as part of an electric car project. 
 The planned power is up to 3KW for charging 160V - 200V car batteries at nominal current of 10A, 15A at maximum. The switching frequency is 100kHz.
