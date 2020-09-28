@@ -9,5 +9,3 @@ In the current state of the project the prototype is built, all the modules are 
 There are some topics that must be improved in to-do list
 
 The detailed description and the first tests are collected in the overview document.
-
-The C programming code for the PIC microcontroller is built based on an Microchip example code. The example code is heavily changed, but since some programming modules are used as is (for example PID assembler code), Microchip licesing lines are left untouched in the files.
