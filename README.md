@@ -1,6 +1,7 @@
 # Charger
 High power electric car charger
-![Prototype board](Charger.jpg?raw=true "Prototype Board")
+
+![Prototype board](Charger.JPG?raw=true "Prototype Board")
 
 
 The AC-DC charger was designed as part of an electric car project. 
