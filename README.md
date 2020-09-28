@@ -8,4 +8,4 @@ Apart from the core switching circuit there are some additional modules implemen
 In the current state of the project the prototype is built, all the modules are tested and are working properly, except CAN. 
 There are some topics that must be improved in to-do list
 
-The detailed description and the first tests are collected in the overview document.
+The detailed description and the first tests are collected in the Charger description document.
